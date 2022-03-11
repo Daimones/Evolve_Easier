@@ -977,7 +977,7 @@ if (convertVersion(global['version']) < 102012){
 }
 
 global['version'] = '1.2.12';
-global['revision'] = 'c';
+global['revision'] = 'ss';
 delete global['beta'];
 
 if (!global.hasOwnProperty('power')){
@@ -1127,6 +1127,9 @@ if (typeof global.settings.space['chthonian'] === 'undefined'){
 }
 if (typeof global.settings.space['sirius'] === 'undefined'){
     global.settings.space['sirius'] = false;
+}
+if (typeof global.settings.main_timer === 'undefined'){
+    global.settings.main_timer = 125;
 }
 
 if (!global.settings.space.hasOwnProperty('titan')){
