@@ -2,6 +2,7 @@ import { global, save, message_logs, message_filters, webWorker, keyMultiplier, 
 import { loc } from './locale.js';
 import { races, traits, genus_traits, traitSkin } from './races.js';
 import { actions, actionDesc } from './actions.js';
+import { jobScale } from './jobs.js';
 import { universe_affixes } from './space.js';
 import { arpaAdjustCosts, arpaProjectCosts } from './arpa.js';
 import { gridDefs } from './industry.js';
@@ -56,10 +57,8 @@ export function popover(id,content,opts){
             if (opts.hasOwnProperty('in') && typeof opts['in'] === 'function'){
                 opts['in']({ this: this, popper: popper, id: `popper` });
             }
-            if (eventActive('firework') && (
-                (!global.race['cataclysm'] && global.city.firework.on > 0) ||
-                (global.race['cataclysm'] && global.space.firework.on > 0)
-                )){
+
+            if (eventActive('firework') && global[global.race['cataclysm'] || global.race['orbit_decayed'] ? 'space' : 'city'].firework.on > 0){
                 $(popper).append(`<span class="pyro"><span class="before"></span><span class="after"></span></span>`);
             }
         });
@@ -184,7 +183,7 @@ function calcATime(){
 
 window.exportGame = function exportGame(){
     if (global.race['noexport']){
-        return 'Export is not available during Race Creation';
+        return `Export is not available during ${global.race['noexport']} Creation`;
     }
     calcATime();
     global.stats['current'] = Date.now();
@@ -237,7 +236,8 @@ export function powerGrid(type,reset){
                 'int_blackhole:far_reach','prtl_badlands:sensor_drone','prtl_badlands:attractor','city:metal_refinery','gxy_stargate:gateway_station','gxy_alien1:vitreloy_plant','gxy_alien2:foothold',
                 'gxy_gorddon:symposium','int_blackhole:mass_ejector','city:casino','spc_hell:spc_casino','prtl_fortress:repair_droid','gxy_stargate:defense_platform','prtl_ruins:guard_post',
                 'prtl_lake:cooling_tower','prtl_lake:harbour','prtl_spire:purifier','prtl_ruins:archaeology','prtl_pit:gun_emplacement','prtl_gate:gate_turret','prtl_pit:soul_attractor',
-                'prtl_gate:infernite_mine','int_sirius:ascension_trigger','spc_kuiper:orichalcum_mine','spc_kuiper:elerium_mine','spc_kuiper:uranium_mine','spc_kuiper:neutronium_mine','spc_dwarf:m_relay'
+                'prtl_gate:infernite_mine','int_sirius:ascension_trigger','spc_kuiper:orichalcum_mine','spc_kuiper:elerium_mine','spc_kuiper:uranium_mine','spc_kuiper:neutronium_mine','spc_dwarf:m_relay',
+                'spc_red:atmo_terraformer'
             ];
             break;
         case 'moon':
@@ -802,6 +802,14 @@ export function timeCheck(c_action,track,detailed){
                 og_track_r[res] = track.r[res];
             });
         }
+        let hasTrash = false;
+        if (global.interstellar.hasOwnProperty('mass_ejector') && global.genes['governor'] && global.tech['governor'] && global.race['governor'] && global.race.governor['g'] && global.race.governor['tasks']){
+            Object.keys(global.race.governor.tasks).forEach(function (t){
+                if (global.race.governor.tasks[t] === 'trash'){
+                    hasTrash = true;
+                }
+            });
+        }
         Object.keys(costs).forEach(function (res){
             if (time >= 0 && !['Morale','HellArmy','Structs','Bool','Plasmid','AntiPlasmid','Phage','Dark','Harmony'].includes(res)){
                 var testCost = offset ? Number(costs[res](offset)) : Number(costs[res]());
@@ -810,6 +818,13 @@ export function timeCheck(c_action,track,detailed){
                     let res_have = res === 'Supply' ? global.portal.purifier.supply : Number(global.resource[f_res].amount);
                     let res_max = res === 'Supply' ? global.portal.purifier.sup_max : global.resource[f_res].max;
                     let res_diff = res === 'Supply' ? global.portal.purifier.diff : global.resource[f_res].diff;
+
+                    if (hasTrash && global.interstellar.mass_ejector[res]){
+                        res_diff += global.interstellar.mass_ejector[res];
+                        if (global.race.governor.config.trash[res]){
+                            res_diff -= global.race.governor.config.trash[res];
+                        }
+                    }
 
                     if (track){
                         res_have += res_diff * track.t;
@@ -871,14 +886,30 @@ export function arpaTimeCheck(project, remain, track){
             og_track_r[res] = track.r[res];
         });
     }
+    let hasTrash = false;
+    if (global.interstellar.hasOwnProperty('mass_ejector') && global.genes['governor'] && global.tech['governor'] && global.race['governor'] && global.race.governor['g'] && global.race.governor['tasks']){
+        Object.keys(global.race.governor.tasks).forEach(function (t){
+            if (global.race.governor.tasks[t] === 'trash'){
+                hasTrash = true;
+            }
+        });
+    }
     Object.keys(costs).forEach(function (res){
         if (allRemainingSegmentsTime >= 0){
             let allRemainingSegmentsCost = Number(costs[res](offset)) * remain;
             if (allRemainingSegmentsCost > 0){
                 let res_have = Number(global.resource[res].amount);
 
+                let res_diff = global.resource[res].diff;
                 if (track){
-                    res_have += global.resource[res].diff * track.t;
+                    if (hasTrash && global.interstellar.mass_ejector[res]){
+                        res_diff += global.interstellar.mass_ejector[res];
+                        if (global.race.governor.config.trash[res]){
+                            res_diff -= global.race.governor.config.trash[res];
+                        }
+                    }
+
+                    res_have += res_diff * track.t;
                     if (track.r[res]){
                         res_have -= Number(track.r[res]);
                         track.r[res] += allRemainingSegmentsCost;
@@ -892,8 +923,8 @@ export function arpaTimeCheck(project, remain, track){
                 }
 
                 if (allRemainingSegmentsCost > res_have){
-                    if (global.resource[res].diff > 0){
-                        let r_time = (allRemainingSegmentsCost - res_have) / global.resource[res].diff;
+                    if (res_diff > 0){
+                        let r_time = (allRemainingSegmentsCost - res_have) / res_diff;
                         if (r_time > allRemainingSegmentsTime){
                             allRemainingSegmentsTime = r_time;
                         }
@@ -1253,7 +1284,7 @@ export function calcPrestige(type,inputs){
         let garrisoned = global.civic.hasOwnProperty('garrison') ? global.civic.garrison.workers : 0;
         for (let i=0; i<3; i++){
             if (global.civic.foreign[`gov${i}`].occ){
-                garrisoned += global.civic.govern.type === 'federation' ? 15 : 20;
+                garrisoned += jobScale(global.civic.govern.type === 'federation' ? 15 : 20);
             }
         }
         if (global.race['high_pop']){
@@ -1314,6 +1345,7 @@ export function calcPrestige(type,inputs){
             plasmid_cap = 800;
             break;
         case 'ascend':
+        case 'terraform':
             pop_divisor = 1.15;
             k_inc = 30000;
             k_mult = 1.008;
@@ -1377,7 +1409,7 @@ export function calcPrestige(type,inputs){
     }
 
 
-    if (type === 'ascend' || type === 'descend'){
+    if (['ascend','descend','terraform'].includes(type)){
         let harmony = 1;
         if (challenge === undefined){
             harmony = alevel();
@@ -1389,7 +1421,7 @@ export function calcPrestige(type,inputs){
             harmony = challenge + 1;
         }
 
-        if (type === 'ascend'){
+        if (type === 'ascend' || type === 'terraform'){
             switch (universe){
                 case 'micro':
                     harmony *= 0.25;
@@ -2186,8 +2218,8 @@ export function eventActive(event,val){
         case 'firework':
             {
                 const date = new Date();
-                if (!global.settings.boring && date.getMonth() === 6 && [4,5,6,7,8].includes(date.getDate()) ){
-                    let region = global.race['cataclysm'] ? 'space' : 'city';
+                if (!global.settings.boring && date.getMonth() === 6 && [1,2,3,4].includes(date.getDate()) ){
+                    let region = global.race['cataclysm'] || global.race['orbit_decayed'] ? 'space' : 'city';
                     if (!global[region].hasOwnProperty('firework')){
                         global[region]['firework'] = {
                             count: 0,
@@ -2388,6 +2420,7 @@ const valAdjust = {
     hivemind: true,
     imitation: true,
     elusive: true,
+    chameleon: true,
     blood_thirst: true,
     selenophobia: true,
     hooved: true,
@@ -2402,26 +2435,44 @@ function getTraitVals(trait,rank){
         else if (trait === 'hivemind' && global.race['high_pop']){
             vals = [vals[0] * traits.high_pop.vars()[0]];
         }
-        else if (trait === 'imitation') {
+        else if (trait === 'imitation'){
             vals.push(races[global.race['srace'] || 'protoplasm'].name);
         }
-        else if (trait === 'elusive') {
+        else if (trait === 'elusive'){
             vals = [Math.round(((1/30)/(1/(30+vals[0]))-1)*100)];
         }
-        else if (trait === 'blood_thirst') {
+        else if (trait === 'chameleon'){
+            vals = [vals[0], Math.round(((1/30)/(1/(30+vals[1]))-1)*100)];
+        }
+        else if (trait === 'blood_thirst'){
             vals = [Math.ceil(Math.log2(vals[0]))];
         }
-        else if (trait === 'selenophobia') {
+        else if (trait === 'selenophobia'){
             vals = [14 - vals[0], vals[0]];
         }
-        else if (trait === 'hooved') {
-            vals = [global.race['sludge'] ? loc('resource_Beaker_name') : loc('resource_Horseshoe_name')];
+        else if (trait === 'hooved'){
+            vals = [hoovedRename()];
         }
         else if (!valAdjust[trait]){
             vals = [];
         }
     }
     return vals;
+}
+
+export function hoovedRename(style){
+    if (global.race['sludge']){
+        return style ? 'craft' : loc('resource_Beaker_name');
+    }
+    else if (global.race.species === 'cath'){
+        return style ? 'craft' : loc('resource_Box_name');
+    }
+    else if (races[global.race.species].type === 'plant'){
+        return style ? 'craft' : loc('resource_Planter_name');
+    }
+    else {
+        return style ? 'forge' : loc('resource_Horseshoe_name');
+    }
 }
 
 const traitExtra = {

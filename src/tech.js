@@ -5,13 +5,14 @@ import { unlockAchieve, alevel, universeAffix } from './achieve.js';
 import { payCosts, housingLabel, wardenLabel, updateQueueNames, drawTech, fanaticism, checkAffordable } from './actions.js';
 import { races, genusVars, checkAltPurgatory } from './races.js';
 import { defineResources, resource_values, atomic_mass } from './resources.js';
-import { loadFoundry } from './jobs.js';
+import { loadFoundry, jobScale } from './jobs.js';
 import { defineIndustry, buildGarrison, checkControlling, govTitle } from './civics.js';
 import { renderSpace } from './space.js';
+import { drawHellObservations } from './portal.js';
 import { setOrbits } from './truepath.js';
 import { arpa } from './arpa.js';
 import { setPowerGrid } from './industry.js';
-import { defineGovernor } from './governor.js';
+import { defineGovernor, removeTask } from './governor.js';
 import { big_bang, cataclysm_end, descension, aiApocalypse } from './resets.js';
 
 const techs = {
@@ -1560,13 +1561,13 @@ const techs = {
         effect: loc('tech_steel_effect'),
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
                 global.resource.Steel.display = true;
-                defineIndustry();
                 return true;
             }
             return false;
+        },
+        post(){
+            defineIndustry();
         }
     },
     blast_furnace: {
@@ -2166,14 +2167,8 @@ const techs = {
         },
         effect() {
             if (global.race['smoldering'] || global.race['kindling_kindred'] || global.race['evil']){
-                let res = loc('resource_Bones_name');
-                if (global.race['smoldering']){
-                    res = loc('resource_Chrysotile_name');
-                }
-                else if (global.race['kindling_kindred']){
-                    res = loc('resource_Stone_name');
-                }
-                return loc('tech_steel_containers_alt_effect',[res]);
+                let res = global.race['kindling_kindred'] || global.race['smoldering'] ? (global.race['smoldering'] ? 'Chrysotile' : 'Stone') : 'Plywood';
+                return loc('tech_steel_containers_alt_effect',[global.resource[res].name]);
             }
             else {
                 return loc('tech_steel_containers_effect');
@@ -2644,7 +2639,7 @@ const techs = {
         },
         effect: loc('tech_governor_effect'),
         action(){
-            if (payCosts($(this)[0]) && global.genes['governor']){
+            if (payCosts($(this)[0])){
                 global.settings.showGovernor = true;
                 return true;
             }
@@ -2668,12 +2663,12 @@ const techs = {
         effect: loc('tech_spy_effect'),
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                vBind({el: '#foreign'},'update');
                 return true;
             }
             return false;
+        },
+        post(){
+            vBind({el: '#foreign'},'update');
         }
     },
     espionage: {
@@ -2694,12 +2689,12 @@ const techs = {
                     global.settings.msgFilters.spy.unlocked = true;
                     global.settings.msgFilters.spy.vis = true;
                 }
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                vBind({el: '#foreign'},'update');
                 return true;
             }
             return false;
+        },
+        post(){
+            vBind({el: '#foreign'},'update');
         }
     },
     spy_training: {
@@ -2946,14 +2941,14 @@ const techs = {
         effect: loc('tech_freight_effect'),
         action(){
             if (payCosts($(this)[0])){
-                if (global.tech['high_tech'] >= 6) {
-                    let tech = $(this)[0].grant[0];
-                    global.tech[tech] = $(this)[0].grant[1];
-                    arpa('Physics');
-                }
                 return true;
             }
             return false;
+        },
+        post(){
+            if (global.tech['high_tech'] >= 6) {
+                arpa('Physics');
+            }
         }
     },
     wharf: {
@@ -3156,12 +3151,12 @@ const techs = {
         effect: loc('tech_stock_market_effect'),
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                arpa('Physics');
                 return true;
             }
             return false;
+        },
+        post(){
+            arpa('Physics');
         }
     },
     hedge_funds: {
@@ -3410,13 +3405,13 @@ const techs = {
         effect: loc('tech_monument_effect'),
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
                 global.arpa['m_type'] = arpa('Monument');
-                arpa('Physics');
                 return true;
             }
             return false;
+        },
+        post(){
+            arpa('Physics');
         }
     },
     tourism: {
@@ -3568,7 +3563,7 @@ const techs = {
         cost: {
             Knowledge(){ return 36000; }
         },
-        effect(){ return loc('tech_adjunct_professor_effect',[wardenLabel(),global.civic.scientist.name]); },
+        effect(){ return loc('tech_adjunct_professor_effect',[wardenLabel(),global.civic.scientist ? global.civic.scientist.name : loc('job_scientist')]); },
         action(){
             if (payCosts($(this)[0])){
                 return true;
@@ -3902,16 +3897,24 @@ const techs = {
         effect: loc('tech_genetics_effect'),
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
                 global.settings.arpa.genetics = true;
-                arpa('Genetics');
-                if (global.race['cataclysm']){
-                    global.arpa.sequence.on = false;
+                if (!global.arpa['sequence']){
+                    global.arpa['sequence'] = {
+                        max: 50000,
+                        progress: 0,
+                        time: 50000,
+                        on: global.race['cataclysm'] || global.race['orbit_decayed'] ? false : true,
+                        boost: false,
+                        auto: false,
+                        labs: 0,
+                    };
                 }
                 return true;
             }
             return false;
+        },
+        post(){
+            arpa('Genetics');
         }
     },
     crispr: {
@@ -3928,15 +3931,15 @@ const techs = {
         effect(){ return global.race['artifical'] ? loc('tech_crispr_effect_artifical') : loc('tech_crispr_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
                 global.settings.arpa.crispr = true;
                 global.settings.arpa.arpaTabs = 2;
-                arpa('Genetics');
-                arpa('Crispr');
                 return true;
             }
             return false;
+        },
+        post(){
+            arpa('Genetics');
+            arpa('Crispr');
         }
     },
     shotgun_sequencing: {
@@ -3953,13 +3956,13 @@ const techs = {
         effect(){ return global.race['artifical'] ? loc('tech_shotgun_sequencing_effect_artifical') : loc('tech_shotgun_sequencing_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
                 global.arpa.sequence.boost = true;
-                arpa('Genetics');
                 return true;
             }
             return false;
+        },
+        post(){
+            arpa('Genetics');
         }
     },
     de_novo_sequencing: {
@@ -3976,13 +3979,13 @@ const techs = {
         effect(){ return global.race['artifical'] ? loc('tech_de_novo_sequencing_effect_artifical') : loc('tech_de_novo_sequencing_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
                 global.resource.Genes.display = true;
-                arpa('Genetics');
                 return true;
             }
             return false;
+        },
+        post(){
+            arpa('Genetics');
         }
     },
     dna_sequencer: {
@@ -3999,13 +4002,13 @@ const techs = {
         effect(){ return global.race['artifical'] ? loc('tech_code_sequencer_effect') : loc('tech_dna_sequencer_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
                 global.arpa.sequence.auto = true;
-                arpa('Genetics');
                 return true;
             }
             return false;
+        },
+        post(){
+            arpa('Genetics');
         }
     },
     rapid_sequencing: {
@@ -4181,15 +4184,15 @@ const techs = {
         action(){
             if (payCosts($(this)[0])){
                 global.settings.showGenetics = true;
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                arpa('Physics');
                 if (global.race['truepath'] && !global.tech['unify']){
                     global.tech['unify'] = 1;
                 }
                 return true;
             }
             return false;
+        },
+        post(){
+            arpa('Physics');
         }
     },
     rocketry: {
@@ -4207,9 +4210,6 @@ const techs = {
         effect: loc('tech_rocketry_effect'),
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                arpa('Physics');
                 if (global.race['truepath'] && !global.tech['rival']){
                     global.tech['rival'] = 1;
                     messageQueue(loc(`civics_rival_unlocked`,[govTitle(3)]),'info',false,['progress','combat']);
@@ -4217,6 +4217,9 @@ const techs = {
                 return true;
             }
             return false;
+        },
+        post(){
+            arpa('Physics');
         }
     },
     robotics: {
@@ -4813,6 +4816,7 @@ const techs = {
         era: 'intergalactic',
         reqs: { science: 19 },
         grant: ['ascension',1],
+        not_trait: ['orbit_decay'],
         cost: {
             Knowledge(){ return 17500000; },
             Phage(){ return 25; }
@@ -4833,6 +4837,7 @@ const techs = {
         era: 'intergalactic',
         reqs: { ascension: 1 },
         grant: ['ascension',2],
+        not_trait: ['orbit_decay'],
         cost: {
             Knowledge(){ return 18500000; },
             Plasmid(){ return 100; }
@@ -4841,6 +4846,28 @@ const techs = {
         action(){
             if (payCosts($(this)[0])){
                 global.settings.space.sirius = true;
+                return true;
+            }
+            return false;
+        }
+    },
+    terraforming: {
+        id: 'tech-terraforming',
+        title: loc('tech_terraforming'),
+        desc: loc('tech_terraforming'),
+        category: 'special',
+        era: 'intergalactic',
+        reqs: { science: 19 },
+        path: ['standard'],
+        grant: ['terraforming',1],
+        trait: ['orbit_decay'],
+        cost: {
+            Knowledge(){ return 18000000; },
+        },
+        effect(){ return loc('tech_terraforming_effect',[races[global.race.species].solar.red]); },
+        action(){
+            if (payCosts($(this)[0])){
+                global.space.terraformer = { count: 0 }
                 return true;
             }
             return false;
@@ -5278,6 +5305,7 @@ const techs = {
         era: 'intergalactic',
         reqs: { mass: 1, science: 19 },
         grant: ['mass',2],
+        not_trait: ['orbit_decayed'],
         cost: {
             Knowledge(){ return 14000000; },
             Orichalcum(){ return 400000; }
@@ -5285,6 +5313,7 @@ const techs = {
         effect(){ return loc('tech_orichalcum_driver_effect'); },
         action(){
             if (payCosts($(this)[0])){
+                global.space['terraformer'] = { count: 0 };
                 return true;
             }
             return false;
@@ -5306,14 +5335,14 @@ const techs = {
         effect: loc('tech_polymer_effect'),
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
                 global.resource.Polymer.display = true;
                 messageQueue(loc('tech_polymer_avail'),'info',false,['progress']);
-                defineIndustry();
                 return true;
             }
             return false;
+        },
+        post(){
+            defineIndustry();
         }
     },
     fluidized_bed_reactor: {
@@ -5398,14 +5427,14 @@ const techs = {
         effect: loc('tech_stanene_effect'),
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
                 global.resource.Stanene.display = true;
                 messageQueue(loc('tech_stanene_avail'),'info',false,['progress']);
-                defineIndustry();
                 return true;
             }
             return false;
+        },
+        post(){
+            defineIndustry();
         }
     },
     nano_tubes: {
@@ -5424,15 +5453,15 @@ const techs = {
         effect: loc('tech_nano_tubes_effect'),
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
                 global.resource.Nano_Tube.display = true;
                 global.city.factory['Nano'] = 0;
                 messageQueue(loc('tech_nano_tubes_msg'),'info',false,['progress']);
-                defineIndustry();
                 return true;
             }
             return false;
+        },
+        post(){
+            defineIndustry();
         }
     },
     scarletite: {
@@ -6445,13 +6474,13 @@ const techs = {
         effect: loc('tech_bows_effect'),
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                vBind({el: `#garrison`},'update');
-                vBind({el: `#c_garrison`},'update');
                 return true;
             }
             return false;
+        },
+        post(){
+            vBind({el: `#garrison`},'update');
+            vBind({el: `#c_garrison`},'update');
         }
     },
     flintlock_rifle: {
@@ -6470,13 +6499,13 @@ const techs = {
         effect(){ return global.race.universe === 'magic' ? loc('tech_magic_arrow_effect') : loc('tech_flintlock_rifle_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                vBind({el: `#garrison`},'update');
-                vBind({el: `#c_garrison`},'update');
                 return true;
             }
             return false;
+        },
+        post(){
+            vBind({el: `#garrison`},'update');
+            vBind({el: `#c_garrison`},'update');
         }
     },
     machine_gun: {
@@ -6496,13 +6525,13 @@ const techs = {
         effect(){ return global.race.universe === 'magic' ? loc('tech_fire_mage_effect') : loc('tech_machine_gun_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                vBind({el: `#garrison`},'update');
-                vBind({el: `#c_garrison`},'update');
                 return true;
             }
             return false;
+        },
+        post(){
+            vBind({el: `#garrison`},'update');
+            vBind({el: `#c_garrison`},'update');
         }
     },
     bunk_beds: {
@@ -6542,13 +6571,13 @@ const techs = {
         effect(){ return global.race.universe === 'magic' ? loc('tech_lightning_caster_effect') : loc('tech_rail_guns_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                vBind({el: `#garrison`},'update');
-                vBind({el: `#c_garrison`},'update');
                 return true;
             }
             return false;
+        },
+        post(){
+            vBind({el: `#garrison`},'update');
+            vBind({el: `#c_garrison`},'update');
         }
     },
     laser_rifles: {
@@ -6566,16 +6595,16 @@ const techs = {
         effect(){ return global.race.universe === 'magic' ? loc('tech_mana_rifles_effect') : loc('tech_laser_rifles_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                vBind({el: `#garrison`},'update');
-                vBind({el: `#c_garrison`},'update');
                 if (global.race.species === 'sharkin'){
                     unlockAchieve('laser_shark');
                 }
                 return true;
             }
             return false;
+        },
+        post(){
+            vBind({el: `#garrison`},'update');
+            vBind({el: `#c_garrison`},'update');
         }
     },
     plasma_rifles: {
@@ -6594,13 +6623,13 @@ const techs = {
         effect(){ return global.race.universe === 'magic' ? loc('tech_focused_rifles_effect') : loc('tech_plasma_rifles_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                vBind({el: `#garrison`},'update');
-                vBind({el: `#c_garrison`},'update');
                 return true;
             }
             return false;
+        },
+        post(){
+            vBind({el: `#garrison`},'update');
+            vBind({el: `#c_garrison`},'update');
         }
     },
     disruptor_rifles: {
@@ -6618,13 +6647,13 @@ const techs = {
         effect(){ return global.race.universe === 'magic' ? loc('tech_magic_missile_effect') : loc('tech_disruptor_rifles_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                vBind({el: `#garrison`},'update');
-                vBind({el: `#c_garrison`},'update');
                 return true;
             }
             return false;
+        },
+        post(){
+            vBind({el: `#garrison`},'update');
+            vBind({el: `#c_garrison`},'update');
         }
     },
     gauss_rifles: {
@@ -6642,13 +6671,13 @@ const techs = {
         effect(){ return global.race.universe === 'magic' ? loc('tech_magicword_kill_effect') : loc('tech_gauss_rifles_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                vBind({el: `#garrison`},'update');
-                vBind({el: `#c_garrison`},'update');
                 return true;
             }
             return false;
+        },
+        post(){
+            vBind({el: `#garrison`},'update');
+            vBind({el: `#c_garrison`},'update');
         }
     },
     cyborg_soldiers: {
@@ -6835,13 +6864,13 @@ const techs = {
         effect(){ return `<div>${loc('tech_laser_turret_effect1')}</div><div class="has-text-special">${loc('tech_laser_turret_effect2')}</div>`; },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                vBind({el: `#fort`},'update');
-                updateQueueNames(false, ['portal-turret']);
                 return true;
             }
             return false;
+        },
+        post(){
+            vBind({el: `#fort`},'update');
+            updateQueueNames(false, ['portal-turret']);
         }
     },
     plasma_turret: {
@@ -6859,13 +6888,13 @@ const techs = {
         effect(){ return `<div>${loc('tech_plasma_turret_effect')}</div><div class="has-text-special">${loc('tech_laser_turret_effect2')}</div>`; },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                vBind({el: `#fort`},'update');
-                updateQueueNames(false, ['portal-turret']);
                 return true;
             }
             return false;
+        },
+        post(){
+            vBind({el: `#fort`},'update');
+            updateQueueNames(false, ['portal-turret']);
         }
     },
     black_powder: {
@@ -7339,6 +7368,7 @@ const techs = {
         era: 'early_space',
         reqs: { theology: 4 },
         grant: ['theology',5],
+        no_queue(){ return global.r_queue.queue.some(item => item.id === 'tech-deify') ? true : false; },
         cost: {
             Knowledge(){ return 195000; }
         },
@@ -7381,6 +7411,7 @@ const techs = {
         era: 'early_space',
         reqs: { theology: 4 },
         grant: ['theology',5],
+        no_queue(){ return global.r_queue.queue.some(item => item.id === 'tech-study') ? true : false; },
         cost: {
             Knowledge(){ return 195000; }
         },
@@ -8522,6 +8553,29 @@ const techs = {
             return false;
         }
     },
+    geck: {
+        id: 'tech-geck',
+        title(){ return loc('tech_geck'); },
+        desc(){ return loc('tech_geck_desc'); },
+        category: 'special',
+        era: 'deep_space',
+        reqs: { genesis: 5 },
+        grant: ['geck',1],
+        condition(){
+            return global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l >= 5 ? true : false;
+        },
+        cost: {
+            Knowledge(){ return 500000; },
+        },
+        effect(){ return loc('tech_geck_effect'); },
+        action(){
+            if (payCosts($(this)[0])){
+                global.starDock['geck'] = { count: 0 };
+                return true;
+            }
+            return false;
+        }
+    },
     genetic_decay: {
         id: 'tech-genetic_decay',
         title: loc('tech_genetic_decay'),
@@ -8786,12 +8840,12 @@ const techs = {
         effect: loc('tech_asteroid_redirect_effect'),
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                arpa('Physics');
                 return true;
             }
             return false;
+        },
+        post(){
+            arpa('Physics');
         }
     },
     exotic_infusion: {
@@ -9055,8 +9109,6 @@ const techs = {
                     global.settings.msgFilters.hell.unlocked = true;
                     global.settings.msgFilters.hell.vis = true;
                 }
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
                 global.portal['fortress'] = {
                     threat: 10000,
                     garrison: 0,
@@ -9077,9 +9129,66 @@ const techs = {
                 else {
                     unlockAchieve('pandemonium');
                 }
+                global.portal.observe = {
+                    settings: {
+                        expanded: false,
+                        average: false,
+                        hyperSlow: false,
+                        display: 'game_days',
+                        dropKills: true,
+                        dropGems: true
+                    },
+                    stats: {
+                        total: {
+                            start: { year: global.city.calendar.year, day: global.city.calendar.day },
+                            days: 0,
+                            wounded: 0, died: 0, revived: 0, surveyors: 0, sieges: 0,
+                            kills: {
+                                drones: 0,
+                                patrols: 0,
+                                sieges: 0,
+                                guns: 0,
+                                soul_forge: 0,
+                                turrets: 0
+                            },
+                            gems: {
+                                patrols: 0,
+                                guns: 0,
+                                soul_forge: 0,
+                                crafted: 0,
+                                turrets: 0
+                            },
+                        },
+                        period: {
+                            start: { year: global.city.calendar.year, day: global.city.calendar.day },
+                            days: 0,
+                            wounded: 0, died: 0, revived: 0, surveyors: 0, sieges: 0,
+                            kills: {
+                                drones: 0,
+                                patrols: 0,
+                                sieges: 0,
+                                guns: 0,
+                                soul_forge: 0,
+                                turrets: 0
+                            },
+                            gems: {
+                                patrols: 0,
+                                guns: 0,
+                                soul_forge: 0,
+                                crafted: 0,
+                                turrets: 0
+                            },
+                        }
+                    },
+                    graphID: 0,
+                    graphs: {}
+                };
                 return true;
             }
             return false;
+        },
+        post(){
+            drawHellObservations();
         }
     },
     war_drones: {
@@ -9942,7 +10051,7 @@ const techs = {
         effect(){ return loc('tech_ley_lines_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                if (global.race['cataclysm']){
+                if (global.race['cataclysm'] || global.race['orbit_decayed']){
                     global.space['pylon'] = { count: 0 };
                 }
                 else {
@@ -10039,12 +10148,12 @@ const techs = {
         effect(){ return loc('tech_mana_nexus_effect'); },
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
-                arpa('Physics');
                 return true;
             }
             return false;
+        },
+        post(){
+            arpa('Physics');
         }
     },
     clerics: {
@@ -10264,12 +10373,13 @@ const techs = {
         era: 'solar',
         reqs: { genetics: 8, kuiper: 1 },
         grant: ['biotech',1],
+        path: ['truepath'],
         cost: {
             Knowledge(){ return 2400000; },
             Orichalcum(){ return 125000; },
             Cipher(){ return 15000; }
         },
-        effect(){ return loc('tech_alien_biotech_effect'); },
+        effect(){ return loc(global.race['orbit_decayed'] ? 'tech_alien_biotech_effect_alt' : 'tech_alien_biotech_effect'); },
         action(){
             if (payCosts($(this)[0])){
                 return true;
@@ -10590,6 +10700,28 @@ const techs = {
         flair: loc('tech_protocol66a_flair'),
         class: 'synth'
     },
+    terraforming_tp: {
+        id: 'tech-terraforming_tp',
+        title: loc('tech_terraforming'),
+        desc: loc('tech_terraforming'),
+        category: 'special',
+        era: 'solar',
+        reqs: { dig_control: 1, eris: 2, titan_ai_core: 2 },
+        path: ['truepath'],
+        grant: ['terraforming',1],
+        trait: ['orbit_decay'],
+        cost: {
+            Knowledge(){ return 5000000; },
+        },
+        effect(){ return loc('tech_terraforming_effect',[races[global.race.species].solar.red]); },
+        action(){
+            if (payCosts($(this)[0])){
+                global.space.terraformer = { count: 0 };
+                return true;
+            }
+            return false;
+        }
+    },
     quantium: {
         id: 'tech-quantium',
         title: loc('tech_quantium'),
@@ -10674,6 +10806,10 @@ const techs = {
         effect: loc('tech_long_range_probes_effect'),
         action(){
             if (payCosts($(this)[0])){
+                global.settings.space.titan = true;
+                global.settings.space.enceladus = true;
+                global.space['titan_spaceport'] = { count: 0, on: 0, support: 0, s_max: 0 };
+                global.space['electrolysis'] = { count: 0, on: 0, support: 0, s_max: 0 };
                 return true;
             }
             return false;
@@ -10857,14 +10993,14 @@ const techs = {
         effect: loc('tech_stanene_effect'),
         action(){
             if (payCosts($(this)[0])){
-                let tech = $(this)[0].grant[0];
-                global.tech[tech] = $(this)[0].grant[1];
                 global.resource.Stanene.display = true;
                 messageQueue(loc('tech_stanene_avail'),'info',false,['progress']);
-                defineIndustry();
                 return true;
             }
             return false;
+        },
+        post(){
+            defineIndustry();
         }
     },
     graphene_tp: {
@@ -11609,7 +11745,7 @@ function uniteEffect(){
     buildGarrison($('#c_garrison'),false);
     for (let i=0; i<3; i++){
         if (global.civic.foreign[`gov${i}`].occ){
-            let occ_amount = global.civic.govern.type === 'federation' ? 15 : 20;
+            let occ_amount = jobScale(global.civic.govern.type === 'federation' ? 15 : 20);
             global.civic['garrison'].max += occ_amount;
             global.civic['garrison'].workers += occ_amount;
             global.civic.foreign[`gov${i}`].occ = false;
@@ -11619,13 +11755,8 @@ function uniteEffect(){
         global.civic.foreign[`gov${i}`].sab = 0;
         global.civic.foreign[`gov${i}`].act = 'none';
     }
-    if (global.genes['governor'] && global.tech['governor'] && global.race['governor'] && global.race.governor['g'] && global.race.governor['tasks']){
-        for (let i=0; i<global.race.governor.tasks.length; i++){
-            if (global.race.governor.tasks[`t${i}`] === 'spy' || global.race.governor.tasks[`t${i}`] === 'spyop'){
-                global.race.governor.tasks[`t${i}`] = 'none';
-            }
-        }
-    }
+    removeTask('spy');
+    removeTask('spyop');
 }
 
 export function swissKnife(cheeseOnly,cheeseList){

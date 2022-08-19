@@ -36,7 +36,15 @@ const extraInformation = {
     planetary: {
         slaughter: [loc(`wiki_structure_planetary_slaughter`)],
     },
-    space: {},
+    space: {
+        terraformer: [loc(`wiki_structure_space_terraformer`)],
+        terraform: [loc(`wiki_structure_space_terraformer`)],
+    },
+    starDock: {
+        geck: [
+            loc(`wiki_structure_stardock_geck`),
+        ]
+    },
     interstellar: {},
     intergalactic: {},
     hell: {},
@@ -58,7 +66,8 @@ const calcInfo = {
     },
     exclude: {
         planetary: ['food','lumber','stone','chrysotile','slaughter','slave_market',''],
-        space: ['test_launch','moon_mission','red_mission','hell_mission','sun_mission','gas_mission','gas_moon_mission','belt_mission','dwarf_mission','titan_mission','enceladus_mission','triton_mission','kuiper_mission','eris_mission','crashed_ship','digsite'],
+        space: ['test_launch','moon_mission','terraform','red_mission','hell_mission','sun_mission','gas_mission','gas_moon_mission','belt_mission','dwarf_mission','titan_mission','enceladus_mission','triton_mission','kuiper_mission','eris_mission','crashed_ship','digsite'],
+        starDock: ['prep_ship','launch_ship'],
         interstellar: ['alpha_mission','proxima_mission','nebula_mission','neutron_mission','blackhole_mission','jump_ship','wormhole_mission','sirius_mission','sirius_b','ascend'],
         intergalactic: ['gateway_mission','gorddon_mission','alien2_mission','chthonian_mission'],
         hell: ['pit_mission','assault_forge','ruins_mission','gate_mission','lake_mission','spire_mission','bribe_sphinx','spire_survey','spire']
@@ -75,11 +84,15 @@ const calcInfo = {
         },
         space: {
             star_dock: 1,
+            terraformer: 100,
             world_collider: 1859,
             shipyard: 1,
             mass_relay: 100,
             fob: 1,
             ai_core: 100
+        },
+        starDock: {
+            seeder: 100
         },
         interstellar: {
             dyson: 100,
@@ -150,6 +163,11 @@ const calcInputs = {
     }
 };
 
+//Additional information to pass to an action's effect() function;
+const effectInputs ={
+    terraformer: ['truepath']
+}
+
 function addCalcInputs(parent,key,section,region,path){
     let hasMax = calcInfo.max[section] && calcInfo.max[section][key] ? calcInfo.max[section][key] : false;
     let inputs = {
@@ -175,6 +193,10 @@ function addCalcInputs(parent,key,section,region,path){
         case 'space':
             action = actions.space[region][key];
             inputs.real_owned = global.space[key] ? global.space[key].count : 0;
+            break;
+        case 'starDock':
+            action = actions.starDock[key];
+            inputs.real_owned = global.starDock[key] ? global.starDock[key].count : 0;
             break;
         case 'interstellar':
             action = actions.interstellar[region][key];
@@ -203,7 +225,18 @@ function addCalcInputs(parent,key,section,region,path){
         if (action.hasOwnProperty('effect') && typeof action.effect !== 'string'){
             let effect = $(`.effect`, `#${key}`);
             clearElement(effect);
-            effect.append(action.effect(inputs.owned - inputs.real_owned));
+            let insert = inputs.owned - inputs.real_owned;
+            if (effectInputs[key]){
+                insert = { count: insert };
+                effectInputs[key].forEach(function(inp){
+                    switch (inp){
+                        case 'truepath':
+                            insert[inp] = path === 'truepath';
+                            break;
+                    }
+                });
+            }
+            effect.append(action.effect(insert));
         }
     };
     updateEffect();
@@ -255,6 +288,9 @@ function addCalcInputs(parent,key,section,region,path){
                     resources[res].creep = +(upper[res](high,inputs.extra) / lower[res](low,inputs.extra)).toFixed(5);
                     if (resources[res].creep === 1){
                         resources[res].creep = loc('wiki_calc_none');
+                    }
+                    else if (resources[res].creep < 1.005){
+                        resources[res].creep = 1.005;
                     }
                     creep = creep || resources[res].vis;
                 }
@@ -361,6 +397,7 @@ function planetaryPage(content,path){
 
 function spacePage(content,path){
     let affix = path === 'truepath' ? 'tp_structures' : 'structures';
+
     Object.keys(actions.space).forEach(function (region){        
         let name = typeof actions.space[region].info.name === 'string' ? actions.space[region].info.name : actions.space[region].info.name();
         let desc = typeof actions.space[region].info.desc === 'string' ? actions.space[region].info.desc : actions.space[region].info.desc();
@@ -379,6 +416,21 @@ function spacePage(content,path){
                 popover(`pop${actions.space[region][struct].id}`,$(`<div>${desc}</div>`));
             }
         });
+    });
+
+    Object.keys(actions.starDock).forEach(function (struct){
+        if (struct !== 'info' && 
+            (!actions.starDock[struct].hasOwnProperty('wiki') || actions.starDock[struct].wiki) && 
+            (!actions.starDock[struct].hasOwnProperty('path') || actions.starDock[struct].path.includes(path)) ){
+            let id = actions.starDock[struct].id.split('-');
+            let info = $(`<div id="${id[1]}" class="infoBox"></div>`);
+            content.append(info);
+            actionDesc(info, actions.starDock[struct],`<span id="pop${actions.starDock[struct].id}">${loc('space_gas_star_dock_title')}</span>`, true);
+            addInfomration(info,'starDock',struct);
+            addCalcInputs(info,struct,'starDock',false,path);
+            sideMenu('add',`space-${affix}`,id[1],typeof actions.starDock[struct].title === 'function' ? actions.starDock[struct].title() : actions.starDock[struct].title);
+            popover(`pop${actions.starDock[struct].id}`,$(`<div>${loc(`space_gas_star_dock_wiki`)}</div>`));
+        }
     });
 }
 

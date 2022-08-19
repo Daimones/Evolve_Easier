@@ -9,8 +9,8 @@ import { setPowerGrid, gridDefs, clearGrids } from './industry.js';
 import { defineGovernment, defineIndustry, defineGarrison, buildGarrison, commisionGarrison, foreignGov } from './civics.js';
 import { races, shapeShift } from './races.js';
 import { drawCity, drawTech, resQueue, clearResDrag } from './actions.js';
-import { renderSpace, ascendLab } from './space.js';
-import { renderFortress, buildFortress, drawMechLab, clearMechDrag } from './portal.js';
+import { renderSpace, ascendLab, terraformLab } from './space.js';
+import { renderFortress, buildFortress, drawMechLab, clearMechDrag, drawHellObservations } from './portal.js';
 import { drawShipYard, clearShipDrag } from './truepath.js';
 import { arpa, clearGeneticsDrag } from './arpa.js';
 
@@ -47,7 +47,7 @@ export function mainVue(){
                     URL.revokeObjectURL(a.href);
                 };
                 const date = new Date();
-                downloadToFile(window.exportGame(), `evolve-${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}.txt`, 'text/plain');
+                downloadToFile(window.exportGame(), `evolve-${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}-${date.getHours()}-${date.getMinutes()}.txt`, 'text/plain');
             },
             importStringFile(){ 
                 let file = document.getElementById("stringPackFile").files[0];
@@ -108,9 +108,17 @@ export function mainVue(){
             },
             restoreGame(){
                 let restore_data = save.getItem('evolveBak') || false;
-                if (restore_data){
-                    importGame(restore_data,true);
-                }
+                this.$buefy.dialog.confirm({
+                    title: loc('restore'),
+                    message: loc('restore_warning'),
+                    ariaModal: true,
+                    confirmText: loc('restore'),
+                    onConfirm() {
+                        if (restore_data){
+                            importGame(restore_data,true);
+                        }
+                    }
+                });
             },
             lChange(locale){
                 global.settings.locale = locale;
@@ -271,6 +279,7 @@ export function initTabs(){
         loadTab(`mTabResource`);
         loadTab(`mTabArpa`);
         loadTab(`mTabStats`);
+        loadTab(`mTabObserve`);
     }
     else {
         loadTab(global.settings.civTabs);
@@ -291,6 +300,7 @@ export function loadTab(tab){
         clearElement($(`#mTabResource`));
         clearElement($(`#mTabArpa`));
         clearElement($(`#mTabStats`));
+        clearElement($(`#mTabObserve`));
     }
     else {
         tagEvent('page_view',{ page_title: `Evolve - All Tabs` });
@@ -389,8 +399,14 @@ export function loadTab(tab){
                     renderFortress();
                 }
                 if (global.race['noexport']){
-                    clearElement($(`#city`));
-                    ascendLab();
+                    if (global.race['noexport'] === 'Race'){
+                        clearElement($(`#city`));
+                        ascendLab();
+                    }
+                    else if (global.race['noexport'] === 'Planet'){
+                        clearElement($(`#city`));
+                        terraformLab();
+                    }
                 }
             }
             break;
@@ -819,6 +835,15 @@ export function loadTab(tab){
                 tagEvent('page_view',{ page_title: `Evolve - Settings` });
             }
             break;
+        case 'mTabObserve':
+        default:
+            if (!global.settings.tabLoad){
+                tagEvent('page_view',{ page_title: `Evolve - Hell Observation` });
+            }
+            if (global.portal.observe){
+                drawHellObservations(true);
+            }
+            break;
     }
     if ($(`#popper`).length > 0 && $(`#${$(`#popper`).data('id')}`).length === 0){
         clearPopper();
@@ -836,6 +861,7 @@ export function index(){
         <h2 class="is-sr-only">Top Bar</h2>
         <span class="planetWrap"><span class="planet">{{ race.species | planet }}</span><span class="universe" v-show="showUniverse()">{{ race.universe | universe }}</span></span>
         <span class="calendar">
+            <span class="infoTimer" id="infoTimer"></span>
             <span v-show="city.calendar.day">
                 <b-tooltip :label="moon()" :aria-label="moon()" position="is-bottom" size="is-small" multilined animated><i id="moon" class="moon wi"></i></b-tooltip>
                 <span class="year">${loc('year')} <span class="has-text-warning">{{ city.calendar.year }}</span></span>
@@ -1087,7 +1113,7 @@ export function index(){
     mainColumn.append(content);
 
     content.append(`<h2 class="is-sr-only">Tab Navigation</h2>`);
-    let tabs = $(`<b-tabs v-model="s.civTabs" :animated="s.animated" @input="swapTab"></b-tabs>`);
+    let tabs = $(`<b-tabs id="mainTabs" v-model="s.civTabs" :animated="s.animated" @input="swapTab"></b-tabs>`);
     content.append(tabs);
 
     // Evolution Tab
@@ -1235,6 +1261,7 @@ export function index(){
                 <b-dropdown-item v-on:click="setTheme('gruvboxLight')">{{ 'theme_gruvboxLight' | label }}</b-dropdown-item>
                 <b-dropdown-item v-on:click="setTheme('gruvboxDark')">{{ 'theme_gruvboxDark' | label }}</b-dropdown-item>
                 <b-dropdown-item v-on:click="setTheme('orangeSoda')">{{ 'theme_orangeSoda' | label }}</b-dropdown-item>
+                <b-dropdown-item v-on:click="setTheme('dracula')">{{ 'theme_dracula' | label }}</b-dropdown-item>
                 ${hideEgg}
             </b-dropdown>
             <span>{{ 'units' | label }} </span>
@@ -1358,6 +1385,13 @@ export function index(){
     </b-tab-item>`);
 
     tabs.append(settings);
+
+    // (Hidden Last Tab) Hell Observation Tab
+    let observe = $(`<b-tab-item disabled>
+        <template slot="header"></template>
+        <div id="mTabObserve"></div>
+    </b-tab-item>`);
+    tabs.append(observe);
 
     // Right Column
     columns.append(`<div id="queueColumn" class="queueCol column"></div>`);

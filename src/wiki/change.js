@@ -3,6 +3,114 @@ import { clearElement } from './../functions.js';
 
 const changeList = [
     {
+        version: `1.2.18`,
+        revision: `a`,
+        date: `8/14/2022`,
+        changes: [
+            `Fixed ARPA queueing.`,
+        ]
+    },
+    {
+        version: `1.2.18`,
+        date: `8/14/2022`,
+        changes: [
+            `More accurate timers when using Governor Trash Management task.`,
+            `Optimistic Min Morale effect now scales with trait rank.`,
+            `Fixed TP loot table when Assaulting or Sieging rival.`,
+        ]
+    },
+    {
+        version: `1.2.17`,
+        revision: `a`,
+        date: `8/10/2022`,
+        changes: [
+            `Cheese Event power is now scaled with your cheese level.`,
+            `Fixed Soft Reset bug with Rejuvenated.`,
+        ]
+    },
+    {
+        version: `1.2.17`,
+        date: `8/10/2022`,
+        changes: [
+            `New Hell stats tracking and analytics.`,
+            `Fixed Genetics not unlocking in Cataclysm.`,
+            `Fixed many High Pop scaling interactions.`,
+            `Fixed some loading bugs with wiki when no save data is present.`,
+            `Updated various wiki entries and calculators.`,
+            `Updated Pig Latin.`
+        ]
+    },
+    {
+        version: `1.2.16`,
+        revision: `a`,
+        date: `8/8/2022`,
+        changes: [
+            `Fixed OD bugs with Ziggurat, Garage, and Fabrication.`,
+            `Fixed Launch Facility sometimes getting stuck in queue.`
+        ]
+    },
+    {
+        version: `1.2.16`,
+        date: `8/4/2022`,
+        changes: [
+            `Added Orbit Decay Challenge.`,
+            `Added Retrograde planetary trait.`,
+            `New achievement: Better dead than red.`,
+            `New CRISPR upgrade: Civil Service.`,
+            `Other stuff the dev was too lazy to document.`
+        ]
+    },
+    {
+        version: `1.2.15`,
+        revision: `a`,
+        date: `7/1/2022`,
+        changes: [
+            `Fixed bug that prevented games without save data from loading.`,
+        ]
+    },
+    {
+        version: `1.2.15`,
+        date: `7/1/2022`,
+        changes: [
+            `Firework Festival now starts on July 1st and ends July 4th.`,
+            `Added Dracula theme by azzzertyy.`,
+            `Fixed bug with Horseshoe governor and multiplier keys.`,
+            `Fixed issues with starting Cataclysm as Synth.`,
+            `Fixed bugs with wrong path techs being displayed.`,
+            `Evil Synth now start with a Graveyard instead of a Lumberyard.`,
+            `Deify and study can no longer be queued at same time.`,
+            `Restore backup no longer requires double clicking to trigger confirmation box.`,
+        ]
+    },
+    {
+        version: `1.2.14`,
+        revision: `a`,
+        date: `4/19/2022`,
+        changes: [
+            `Fixed some minor bugs.`,
+            `Updated some translations.`
+        ]
+    },
+    {
+        version: `1.2.14`,
+        date: `4/1/2022`,
+        changes: [
+            `Added Titan Mine slider to Industry tab.`,
+            `Added additional popup confirmation to Restore Backup.`,
+            `Nanite Factory interface now has tooltips for each resource`,
+            `The Vault Discovery event can no longer occur if there are 0 Archaeologists and/or if Suppression is at 0%`,
+            `Fixed bugs related to unlocking the Fool feat.`,
+            `Fixed bugs with Mass Ejector optimizor governor task.`,
+        ]
+    },
+    {
+        version: `1.2.13`,
+        date: `3/31/2022`,
+        changes: [
+            `Restore Backup must now be clicked twice to trigger.`,
+        ]
+    },
+    {
         version: `1.2.12`,
         revision: `c`,
         date: `3/7/2022`,

@@ -1,5 +1,5 @@
 import { global, tmp_vars, keyMultiplier, breakdown, sizeApproximation, p_on, support_on } from './vars.js';
-import { vBind, clearElement, modRes, flib, calc_mastery, calcPillar, eventActive, easterEgg, trickOrTreat, popover, harmonyEffect, darkEffect } from './functions.js';
+import { vBind, clearElement, modRes, flib, calc_mastery, calcPillar, eventActive, easterEgg, trickOrTreat, popover, harmonyEffect, darkEffect, hoovedRename } from './functions.js';
 import { traits } from './races.js';
 import { hellSupression } from './portal.js';
 import { syndicate } from './truepath.js';
@@ -204,6 +204,7 @@ export const craftingRatio = (function(){
     
     return function (res,type,recalc){
         if (recalc){
+            let noEarth = global.race['cataclysm'] || global.race['orbit_decayed'] ? true : false;
             crafting = {
                 general: {
                     add: [],
@@ -263,8 +264,8 @@ export const craftingRatio = (function(){
                     if (global.city.foundry[resource] && global.city.foundry[resource] > 1){
                         crafting[resource].add.push({
                             name: loc(`tech_apprentices`),
-                            manual: (global.city.foundry[resource] - 1) * 0.03,
-                            auto: (global.city.foundry[resource] - 1) * 0.03
+                            manual: (global.city.foundry[resource] - 1) * highPopAdjust(0.03),
+                            auto: (global.city.foundry[resource] - 1) * highPopAdjust(0.03)
                         });
                     }
                 });
@@ -307,8 +308,8 @@ export const craftingRatio = (function(){
             if (global.space['fabrication'] && support_on['fabrication']){
                 crafting.general.add.push({
                     name: loc(`space_red_fabrication_title`),
-                    manual: support_on['fabrication'] * global.civic.colonist.workers * (global.race['cataclysm'] ? highPopAdjust(0.05) : highPopAdjust(0.02)),
-                    auto: support_on['fabrication'] * global.civic.colonist.workers * (global.race['cataclysm'] ? highPopAdjust(0.05) : highPopAdjust(0.02))
+                    manual: support_on['fabrication'] * global.civic.colonist.workers * (noEarth ? highPopAdjust(0.05) : highPopAdjust(0.02)),
+                    auto: support_on['fabrication'] * global.civic.colonist.workers * (noEarth ? highPopAdjust(0.05) : highPopAdjust(0.02))
                 });
             }
             if (p_on['stellar_forge']){
@@ -400,6 +401,13 @@ export const craftingRatio = (function(){
                     name: loc(`tab_arpa_crispr`) + ' ' + loc(`wiki_arpa_crispr_crafty`),
                     manual: 1,
                     auto: 1 + ((global.genes.crafty - 1) * 0.5)
+                });
+            }
+            if (global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l >= 1){
+                crafting.general.multi.push({
+                    name: loc(`evo_challenge_orbit_decay`),
+                    manual: 1,
+                    auto: 1.1
                 });
             }
             if (global.race['ambidextrous']){
@@ -870,10 +878,64 @@ export function setResourceName(name){
         global.resource[name].name = name === 'Money' ? '$' : loc(`resource_${name}_name`);
     }
     
-    if (global.race['sludge']){
-        if (name === 'Horseshoe'){
-            global.resource[name].name = loc(`resource_Beaker_name`);
+    if (eventActive('fool',2022)){
+        switch(name){
+            case 'Lumber':
+                global['resource'][name].name = loc('resource_Stone_name');
+                break;
+            case 'Stone':
+                global['resource'][name].name = loc('resource_Lumber_name');
+                break;
+            case 'Copper':
+                global['resource'][name].name = loc('resource_Iron_name');
+                break;
+            case 'Iron':
+                global['resource'][name].name = loc('resource_Copper_name');
+                break;
+            case 'Steel':
+                global['resource'][name].name = loc('resource_Titanium_name');
+                break;
+            case 'Titanium':
+                global['resource'][name].name = loc('resource_Steel_name');
+                break;
+            case 'Coal':
+                global['resource'][name].name = loc('resource_Oil_name');
+                break;
+            case 'Oil':
+                global['resource'][name].name = loc('resource_Coal_name');
+                break;
+            case 'Alloy':
+                global['resource'][name].name = loc('resource_Polymer_name');
+                break;
+            case 'Polymer':
+                global['resource'][name].name = loc('resource_Alloy_name');
+                break;
+            case 'Graphene':
+                global['resource'][name].name = loc('resource_Stanene_name');
+                break;
+            case 'Stanene':
+                global['resource'][name].name = loc('resource_Graphene_name');
+                break;
+            case 'Plywood':
+                global['resource'][name].name = loc('resource_Brick_name');
+                break;
+            case 'Brick':
+                global['resource'][name].name = loc('resource_Plywood_name');
+                break;
+            case 'Genes':
+                global['resource'][name].name = loc('resource_Soul_Gem_name');
+                break;
+            case 'Soul_Gem':
+                global['resource'][name].name = loc('resource_Genes_name');
+                break;
+            case 'Slave':
+                global['resource'][name].name = loc('resource_Peon_name');
+                break;
         }
+    }
+
+    if (name === 'Horseshoe'){
+        global.resource[name].name = hoovedRename();
     }
 
     if (global.race['artifical']){
@@ -2368,7 +2430,7 @@ function initEjector(){
         let eject = $(`<span class="trade"></span>`);
         ejector.append(eject);
 
-        eject.append($(`<span>{{ total }} / {{ on | max }}</span><span class="mass">${loc('interstellar_mass_ejector_mass')}: {{ mass | approx }} kt/s</span>`));
+        eject.append($(`<span>{{ total }} / {{ on | max }}{{ on | real }}</span><span class="mass">${loc('interstellar_mass_ejector_mass')}: {{ mass | approx }} kt/s</span>`));
 
         vBind({
             el: `#eject`,
@@ -2376,6 +2438,12 @@ function initEjector(){
             filters: {
                 max(num){
                     return num * 1000;
+                },
+                real(num){
+                    if (p_on['mass_ejector'] < num){
+                        return ` (${loc('interstellar_mass_ejector_active',[p_on['mass_ejector'] * 1000])})`;
+                    }
+                    return '';
                 },
                 approx(tons){
                     return sizeApproximation(tons,2);
@@ -2421,8 +2489,8 @@ export function loadEjector(name,color){
             methods: {
                 ejectMore(r){
                     let keyMutipler = keyMultiplier();
-                    if (keyMutipler + global.interstellar.mass_ejector.total > global.interstellar.mass_ejector.on * 1000){
-                        keyMutipler = global.interstellar.mass_ejector.on * 1000 - global.interstellar.mass_ejector.total;
+                    if (keyMutipler + global.interstellar.mass_ejector.total > p_on['mass_ejector'] * 1000){
+                        keyMutipler = p_on['mass_ejector'] * 1000 - global.interstellar.mass_ejector.total;
                     }
                     global.interstellar.mass_ejector[r] += keyMutipler;
                     global.interstellar.mass_ejector.total += keyMutipler;
@@ -2605,6 +2673,7 @@ export const spatialReasoning = (function(){
             global.city['temple'] ? global.city.temple.count : '0',
             global.space['ziggurat'] ? global.space.ziggurat.count : '0',
             global.race['cataclysm'] ? global.race.cataclysm : '0',
+            global.race['orbit_decayed'] ? global.race.orbit_decayed : '0',
             global.genes['ancients'] || '0',
             global.civic['priest'] ? global.civic.priest.workers : '0'
         ].join('-');
@@ -2614,6 +2683,7 @@ export const spatialReasoning = (function(){
         }
         if (!spatial[tkey][key] || recalc){            
             let modifier = 1;
+            let noEarth = global.race['cataclysm'] || global.race['orbit_decayed'] ? true : false;
             if (global.genes['store']){
                 let plasmids = 0;
                 if (!type || (type && ((type === 'plasmid' && global.race.universe !== 'antimatter') || (type === 'anti' && global.race.universe === 'antimatter')))){
@@ -2647,7 +2717,7 @@ export const spatialReasoning = (function(){
             if (global.race.universe === 'standard'){
                 modifier *= darkEffect('standard');
             }
-            if (global.race.universe === 'antimatter' && ((!global.race['cataclysm'] && global.city['temple'] && global.city['temple'].count) || (global.race['cataclysm'] && global.space['ziggurat'] && global.space['ziggurat'].count))){
+            if (global.race.universe === 'antimatter' && ((!noEarth && global.city['temple'] && global.city['temple'].count) || (noEarth && global.space['ziggurat'] && global.space['ziggurat'].count))){
                 let temple = 0.06;
                 if (global.genes['ancients'] && global.genes['ancients'] >= 2 && global.civic.priest.display){
                     let priest = global.genes['ancients'] >= 5 ? 0.0012 : (global.genes['ancients'] >= 3 ? 0.001 : 0.0008);
@@ -2656,7 +2726,7 @@ export const spatialReasoning = (function(){
                     }
                     temple += priest * global.civic.priest.workers;
                 }
-                modifier *= 1 + ((global.race['cataclysm'] ? global.space.ziggurat.count : global.city.temple.count) * temple);
+                modifier *= 1 + ((noEarth ? global.space.ziggurat.count : global.city.temple.count) * temple);
             }
             if (!type){
                 if (global['pillars']){
@@ -2673,7 +2743,8 @@ export const spatialReasoning = (function(){
 
 export function faithBonus(){
     if (global.race['no_plasmid'] || global.race.universe === 'antimatter'){
-        if ((global.race['cataclysm'] && global.space['ziggurat'] && global.space.ziggurat.count) || (global.city['temple'] && global.city['temple'].count)){
+        let noEarth = global.race['cataclysm'] || global.race['orbit_decayed'] ? true : false;
+        if ((noEarth && global.space['ziggurat'] && global.space.ziggurat.count) || (global.city['temple'] && global.city['temple'].count)){
             let temple_bonus = global.tech['anthropology'] && global.tech['anthropology'] >= 1 ? 0.016 : 0.01;
             if (global.tech['fanaticism'] && global.tech['fanaticism'] >= 2){
                 let indoc = global.civic.professor.workers * (global.race.universe === 'antimatter' ? 0.0002 : 0.0004);
@@ -2704,7 +2775,7 @@ export function faithBonus(){
             if (global.race['ooze']){
                 temple_bonus *= 1 - (traits.ooze.vars()[1] / 100);
             }
-            return (global.race['cataclysm'] ? global.space.ziggurat.count : global.city.temple.count) * temple_bonus;
+            return (noEarth ? global.space.ziggurat.count : global.city.temple.count) * temple_bonus;
         }
     }
     return 0;
@@ -2729,7 +2800,9 @@ export const plasmidBonus = (function (){
             global.race['no_plasmid'] || '0',
             global.genes['ancients'] || '0',
             global.city['temple'] ? global.city.temple.count : '0',
+            global.space['ziggurat'] ? global.space.ziggurat.count : '0',
             global.civic['priest'] ? global.civic.priest.workers : '0',
+            global.race['orbit_decayed'] ? global.race.orbit_decayed : '0',
             global.race['spiritual'] || '0'
         ].join('-');
 
@@ -2758,7 +2831,15 @@ export const plasmidBonus = (function (){
                     standard = +((Math.log(plasmids + 50) - 3.91202)).toFixed(5) / 2.888;
                 }
 
-                if (global.city['temple'] && global.city['temple'].count && !global.race['no_plasmid'] && global.race.universe !== 'antimatter'){
+                let shrines = 0;
+                if (global.race['orbit_decayed'] && global.space['ziggurat']){
+                    shrines = global.space.ziggurat.count;
+                }
+                else if (global.city['temple']){
+                    shrines = global.city.temple.count;
+                }
+
+                if (shrines > 0 && !global.race['no_plasmid'] && global.race.universe !== 'antimatter'){
                     let temple_bonus = global.tech['anthropology'] && global.tech['anthropology'] >= 1 ? 0.08 : 0.05;
                     if (global.tech['fanaticism'] && global.tech['fanaticism'] >= 2){
                         let indoc = global.civic.professor.workers * 0.002;
@@ -2783,7 +2864,10 @@ export const plasmidBonus = (function (){
                     if (global.race['ooze']){
                         temple_bonus *= 1 - (traits.ooze.vars()[1] / 100);
                     }
-                    standard *= 1 + (global.city.temple.count * temple_bonus);
+                    if (global.race['orbit_decayed'] && global.race['truepath']){
+                        temple_bonus *= 0.1;
+                    }
+                    standard *= 1 + (shrines * temple_bonus);
                 }
             }
 

@@ -51,6 +51,8 @@ export function set_alevel(a_level){
 export function set_ulevel(u_level){
     universe_level = u_level;
 }
+export var hell_reports = {};
+export var hell_graphs = {};
 export var message_logs = {
     view: 'all'
 };
@@ -976,8 +978,99 @@ if (convertVersion(global['version']) < 102012){
     }
 }
 
-global['version'] = '1.2.12';
-global['revision'] = 'ss';
+if (convertVersion(global['version']) < 102015){
+    if (global.race.hasOwnProperty('governor') && global.race.governor.hasOwnProperty('tasks')){
+        for (let task in global.race.governor.tasks) {
+            if (global.race.governor.tasks[task] === 'asssemble'){
+                global.race.governor.tasks[task] = 'assemble';
+            }
+        }
+    }
+    if (global['settings'] && global.settings.hasOwnProperty('restoreCheck')){
+        delete global.settings['restoreCheck'];
+    }
+}
+
+if (convertVersion(global['version']) < 102017){
+    if (global.portal.hasOwnProperty('fortress')){
+        global.portal.observe = {
+            settings: {
+                expanded: false,
+                average: false,
+                hyperSlow: false,
+                display: 'game_days',
+                dropKills: true,
+                dropGems: true
+            },
+            stats: {
+                total: {
+                    start: { year: global.city.calendar.year, day: global.city.calendar.day },
+                    days: 0,
+                    wounded: 0, died: 0, revived: 0, surveyors: 0, sieges: 0,
+                    kills: {
+                        drones: 0,
+                        patrols: 0,
+                        sieges: 0,
+                        guns: 0,
+                        soul_forge: 0,
+                        turrets: 0
+                    },
+                    gems: {
+                        patrols: 0,
+                        guns: 0,
+                        soul_forge: 0,
+                        crafted: 0,
+                        turrets: 0
+                    },
+                },
+                period: {
+                    start: { year: global.city.calendar.year, day: global.city.calendar.day },
+                    days: 0,
+                    wounded: 0, died: 0, revived: 0, surveyors: 0, sieges: 0,
+                    kills: {
+                        drones: 0,
+                        patrols: 0,
+                        sieges: 0,
+                        guns: 0,
+                        soul_forge: 0,
+                        turrets: 0
+                    },
+                    gems: {
+                        patrols: 0,
+                        guns: 0,
+                        soul_forge: 0,
+                        crafted: 0,
+                        turrets: 0
+                    },
+                }
+            },
+            graphID: 0,
+            graphs: {}
+        };
+    }
+    if (global.tech.hasOwnProperty('genetics') && global.tech.genetics > 1 && global.hasOwnProperty('arpa')){
+        if (!global.arpa.hasOwnProperty('sequence')){
+            global.arpa['sequence'] = {
+                max: 50000,
+                progress: 0,
+                time: 50000,
+                on: false
+            };
+        }
+        if (!global.arpa.sequence['boost']){
+            global.arpa.sequence['boost'] = false;
+        }
+        if (!global.arpa.sequence['auto']){
+            global.arpa.sequence['auto'] = false;
+        }
+        if (!global.arpa.sequence['labs']){
+            global.arpa.sequence['labs'] = 0;
+        }
+    }
+}
+
+global['version'] = '1.2.18';
+global['revision'] = 'a';
 delete global['beta'];
 
 if (!global.hasOwnProperty('power')){
@@ -1320,6 +1413,9 @@ if (!global.settings['statsTabs']){
 if (!global.settings['govTabs2']){
     global.settings['govTabs2'] = 0;
 }
+if (!global.settings['hellTabs']){
+    global.settings['hellTabs'] = 0;
+}
 if (!global.settings['locale']){
     global.settings['locale'] = 'en-us';
 }
@@ -1455,8 +1551,14 @@ if (!global.stats['ascend']){
 if (!global.stats['descend']){
     global.stats['descend'] = 0;
 }
+if (!global.stats['terraform']){
+    global.stats['terraform'] = 0;
+}
 if (!global.stats['aiappoc']){
     global.stats['aiappoc'] = 0;
+}
+if (!global.stats['geck']){
+    global.stats['geck'] = 0;
 }
 if (!global.stats['dark']){
     global.stats['dark'] = 0;
@@ -1582,6 +1684,13 @@ if (!global.civic['govern']){
     };
 }
 global.civic.govern.fr = 0;
+
+if (!global.hasOwnProperty('custom')){
+    global['custom'] = {};
+}
+if (global.custom.hasOwnProperty('planet') && global.custom.planet.hasOwnProperty('biome')){
+    delete global.custom.planet;
+}
 
 if (global.city.hasOwnProperty('smelter') && !global.city.smelter.hasOwnProperty('cap')){
     global.city.smelter['cap'] = 0;
@@ -1908,10 +2017,6 @@ if (global['arpa'] && global.arpa['launch_facility'] && global.arpa.launch_facil
     global.tech['space'] = 1;
 }
 
-if (!(save.getItem('evolveBak'))){
-    save.setItem('evolveBak',LZString.compressToUTF16(JSON.stringify(global)));
-}
-
 function newGameData(){
     global['race'] = { species : 'protoplasm', gods: 'none', old_gods: 'none', seeded: false };
     Math.seed = Math.rand(0,10000);
@@ -2070,6 +2175,11 @@ window.soft_reset = function reset(){
     clearSavedMessages();
 
     let srace = global.race.hasOwnProperty('srace') ? global.race.srace : false;
+    let gecks = global.race.hasOwnProperty('geck') ? global.race.geck : 0;
+    if (global.race.hasOwnProperty('gecked')){
+        gecks += global.race.gecked;
+        global.stats.geck -= global.race.gecked;
+    }
     let replace = {
         species : 'protoplasm',
         Plasmid: { count: global.race.Plasmid.count },
@@ -2083,6 +2193,10 @@ window.soft_reset = function reset(){
         probes: global.race.probes,
         seed: global.race.seed,
         ascended: global.race.hasOwnProperty('ascended') ? global.race.ascended : false,
+        rejuvenated: global.race.hasOwnProperty('rejuvenated') ? global.race.rejuvenated : false,
+    }
+    if (gecks > 0){
+        replace['geck'] = gecks;
     }
     if (srace){
         replace['srace'] = srace;
@@ -2301,6 +2415,7 @@ export function clearStates(){
     global.settings.civTabs = 0;
     global.settings.govTabs = 0;
     global.settings.govTabs2 = 0;
+    global.settings.hellTabs = 0;
     global.settings.resTabs = 0;
     global.settings.spaceTabs = 0;
     global.settings.marketTabs = 0

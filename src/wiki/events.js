@@ -235,7 +235,7 @@ function mainEventsPage(content){
         infoBoxBuilder(mainContent, { name: 'quake_condition', template: 'events', label: loc('wiki_events_quake'), paragraphs: 2, break: [2], h_level: 2 }, section);
         infoBoxBuilder(mainContent, { name: 'quake_examples', template: 'events', label: loc('wiki_events_quake'), h_level: 2, 
             examples: [
-                loc('event_quake',[global.race['cataclysm'] ? races[global.race.species].solar.red : races[global.race.species].home])
+                loc('event_quake',[global.race['cataclysm'] || global.race['orbit_decayed'] ? races[global.race.species].solar.red : races[global.race.species].home])
             ]
         }, section);
         sideMenu('add',`major-events`,`quake`,loc('wiki_events_quake'));
@@ -1108,9 +1108,11 @@ function minorEventsPage(content){
     }
     
     {   // Cheese
+        let resets = global.stats.hasOwnProperty('reset') ? global.stats.reset + 1 : 1;
+        let cheese = +(resets / (resets + 10) * 11).toFixed(2);
         let section = infoBoxBuilder(mainContent,{ name: 'cheese', template: 'events', label: loc('wiki_events_cheese'), paragraphs: 1, h_level: 2,
             para_data: {
-                1: [`1%`,10,25]
+                1: [`${cheese}%`,10,9+resets]
             }});
         infoBoxBuilder(mainContent, { name: 'tech', template: 'events', label: loc('wiki_events_cheese'), paragraphs: 1, h_level: 2,
             para_data: {
@@ -1320,7 +1322,7 @@ function progressEventsPage(content){
             data_link: {
                 1: [false,'wiki.html#hell-structures-soul_forge'],
                 2: [false,false,'wiki.html#hell-structures-soul_attractor']
-            },
+            }
         });
         infoBoxBuilder(mainContent, { name: 'corrupt_gem_condition', template: 'events', label: loc('wiki_events_corrupt_gem'), paragraphs: 1, h_level: 2,
             para_data: {
@@ -1334,6 +1336,23 @@ function progressEventsPage(content){
             ]
         }, section);
         sideMenu('add',`progress-events`,`corrupt_gem`,loc('wiki_events_corrupt_gem'));
+    }
+    
+    {   // Vault Discovery
+        let section = infoBoxBuilder(mainContent,{ name: 'vault_find', template: 'events', label: loc('wiki_events_vault_find'), paragraphs: 3, break: [2], h_level: 2,
+            para_data: {
+                1: [loc(`job_archaeologist`),loc(`portal_vault_title`),loc(`portal_ruins_name`)],
+                2: [loc(`job_archaeologist`),`2.5%`],
+                3: [loc(`job_archaeologist`),loc(`portal_ruins_supressed`),loc(`portal_ruins_name`),`0%`,`2.5%`,`100%`]
+            },
+            data_link: {
+                1: [false,'wiki.html#hell-structures-vault']
+            },
+            examples: [
+                loc(`portal_ruins_vault`)
+            ]
+        });
+        sideMenu('add',`progress-events`,`vault_find`,loc('wiki_events_vault_find'));
     }
     
     {   // Syndicate Unlock

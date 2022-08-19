@@ -925,7 +925,7 @@ const extraInformation = {
         loc(`wiki_tech_building_unlock`,[loc(`city_boot_camp`)])
     ],
     vr_training: [
-        loc(`wiki_tech_vr_training`,[races[global.race.species].type === 'synthetic' ? loc(`city_boot_camp`) : loc(`tech_hospital`)])
+        loc(`wiki_tech_vr_training`,[races[global.race.species].type === 'synthetic' ? loc(`city_boot_camp_art`) : loc(`city_boot_camp`)])
     ],
     bows: [
         loc(`wiki_tech_bows`,[100])
@@ -1023,11 +1023,11 @@ const extraInformation = {
         loc(`wiki_tech_hunter_process`,[loc(`resource_Steel_name`),25])
     ],
     kroll_process: [
-        loc(`wiki_tech_hunter_process`,[loc(`resource_Iron_name`),25])
+        loc(`wiki_tech_kroll_process`,[loc(`resource_Iron_name`),25])
     ],
     cambridge_process: [
         loc(`wiki_tech_hunter_process`,[loc(`resource_Steel_name`),10]),
-        loc(`wiki_tech_hunter_process`,[loc(`resource_Iron_name`),10])
+        loc(`wiki_tech_kroll_process`,[loc(`resource_Iron_name`),10])
     ],
     matter_compression: [
         loc(`wiki_tech_matter_compression`,[loc(`resource_Crates_name`),loc(`city_storage_yard`)]),
@@ -1271,6 +1271,12 @@ const extraInformation = {
     asteroid_redirect: [
         loc(`wiki_tech_project_unlock`,[loc(`arpa_projects_roid_eject_title`,[loc(`arpa_projects_roid_eject_asteroid`)])])
     ],
+    exotic_infusion: [
+        loc(`wiki_tech_confirmation`)
+    ],
+    infusion_check: [
+        loc(`wiki_tech_confirmation`)
+    ],
     infusion_confirm: [
         loc(`wiki_tech_infusion_confirm`)
     ],
@@ -1420,7 +1426,7 @@ const extraInformation = {
         loc(`wiki_tech_job_unlock`,[loc(`job_crystal_miner`)])
     ],
     ley_lines: [
-        loc(`wiki_tech_building_unlock`,[global.race['cataclysm'] ? loc(`space_red_pylon`) : loc(`city_pylon`)])
+        loc(`wiki_tech_building_unlock`,[global.race['cataclysm'] || global.race['orbit_decayed'] ? loc(`space_red_pylon`) : loc(`city_pylon`)])
     ],
     rituals: [
         loc(`wiki_tech_rituals`)
@@ -1639,7 +1645,10 @@ const extraInformation = {
     ],
     quantum_signatures: [
         loc(`wiki_tech_ship_sensor_unlock`,[loc('outer_shipyard_sensor_quantum')])
-    ]
+    ],
+    geck: [
+        loc(`wiki_tech_geck`)
+    ],
 };
 
 const extraInformationTP = {
@@ -1744,9 +1753,6 @@ const extraRequirements = {
     dwarf1 : {
         title: loc('wiki_tech_req_mission',[loc('space_mission_title',[getSolarName('dwarf')])]),
         link: 'wiki.html#space-structures-dwarf_mission'
-    },
-    genesis1 : {
-        title: loc('wiki_tech_req_genesis1')
     },
     science11 : {
         title: loc('wiki_tech_req_megabuilding',[loc('space_dwarf_collider_title')]),
@@ -3142,6 +3148,17 @@ const specialRequirements = {
             ]
         }
     ],
+    genesis: [
+        {
+            category: 'unique',
+            subreqs: [
+                {
+                    title: loc(`wiki_tech_special_genesis`),
+                    color: global.race.deterioration >= 1 ? true : false
+                }
+            ]
+        }
+    ],
     veil: [
         {
             category: 'universe',
@@ -3301,6 +3318,27 @@ const specialRequirements = {
                            global.stats.spire[universeAffix()].hasOwnProperty('dlstr') && 
                            global.stats.spire[universeAffix()].dlstr > 0,
                     link: 'wiki.html#mechanics-gameplay-dlord'
+                }
+            ]
+        }
+    ],
+    terraforming: [
+        {
+            category: 'challenge',
+            subreqs: [
+                {
+                    name: 'orbitdecay'
+                }
+            ]
+        }
+    ],
+    geck: [
+        {
+            category: 'achieve',
+            subreqs: [
+                {
+                    name: 'lamentis',
+                    val: 5
                 }
             ]
         }
@@ -3543,6 +3581,11 @@ function addRequirements(parent,key,keyName,path){
                     case 'scenario':
                         subText = loc(`wiki_challenges_scenarios_${subreq.name}`);
                         link = `wiki.html#challenges-gameplay-scenarios_${subreq.name}`;
+                        color = global.race[subreq.name];
+                        break;
+                    case 'challenge':
+                        subText = loc(`wiki_challenges_modes_${subreq.name}`);
+                        link = `wiki.html#challenges-gameplay-modes_${subreq.name}`;
                         color = global.race[subreq.name];
                         break;
                     case 'unique':
