@@ -1208,6 +1208,7 @@ if (!global['settings']){
         showAchieve: false,
         animated: true,
         disableReset: false,
+        disableCustom: false,
         font: 'standard',
         q_merge: 'merge_nearby',
         cLabels: true,
@@ -1886,6 +1887,7 @@ if (!global.civic['d_job']){
 
 global.settings.animated = true;
 global.settings.disableReset = false;
+global.settings.disableCustom = false;
 
 if (global['arpa'] && global.arpa['launch_facility'] && global.arpa.launch_facility.rank > 0 && !global.tech['space']){
     global.tech['space'] = 1;
@@ -2275,6 +2277,7 @@ export function clearStates(){
     global.settings.space.home = true;
     setRegionStates(true);
     global.settings.disableReset = false;
+    global.settings.disableCustom = false;
     global.settings.pause = false;
     global.arpa = {};
 

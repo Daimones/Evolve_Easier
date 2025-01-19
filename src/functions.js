@@ -605,8 +605,33 @@ export function tagEvent(event, data){
 export function modRes(res,val,notrack,buffer){
     let count = global.resource[res].amount + val;
     let success = true;
+
     if (count > global.resource[res].max && global.resource[res].max != -1){
-        count = global.resource[res].max;
+        // Previous Max
+        //let amount = global.resource[res].amount - global.resource[res].max
+
+        // Controls how often to increment the reduced resource scaling
+        const overCapStageDivisor = 2;
+        const overCapMultiplier = 0.95;
+        const overCapScaling = 0.4;
+        const overCapOrder = 2;
+
+        let gained = 0;
+        let stage = Math.floor(global.resource[res].amount / (global.resource[res].max / overCapStageDivisor));
+        
+        let remaining = val;
+        while (remaining > 0){
+            const stage_remainder = (global.resource[res].max / overCapStageDivisor) * (stage + 1) - global.resource[res].amount - gained;
+            const stage_multi = stage > 0 ? (overCapMultiplier * overCapScaling**(overCapOrder*(stage - 1))) : 1;
+            const stage_earned = Math.min(stage_remainder , remaining * stage_multi);
+
+            gained += stage_earned;
+            remaining -= stage_earned / stage_multi;
+            stage++;
+        }
+        count = global.resource[res].amount + gained 
+        val = gained
+        
     }
     else if (count < 0){
         if (!buffer || (buffer && (count * -1) > buffer)){
@@ -883,7 +908,7 @@ export function timeCheck(c_action,track,detailed,reqMet){
                             track.rr[f_res] += testCost;
                         }
                         if (res_max >= 0 && res_have > res_max){
-                            res_have = res_max;
+                            //res_have = res_max;
                         }
                     }
                     if (testCost > res_have){

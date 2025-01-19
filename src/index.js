@@ -1307,7 +1307,7 @@ export function index(){
         <b-switch class="setting" v-model="s.expose"><span class="settings8" aria-label="${loc('settings8')}">{{ 'expose' | label }}</span></b-switch>
         <b-switch class="setting" v-model="s.tabLoad" @input="toggleTabLoad"><span class="settings11" aria-label="${loc('settings11')}">{{ 'tabLoad' | label }}</span></b-switch>
         <b-switch class="setting" v-model="s.boring"><span class="settings10" aria-label="${loc('settings10')}">{{ 'boring' | label }}</span></b-switch>
-        <b-switch class="setting" v-model="s.touch"><span class="settings16" aria-label="${loc('settings16')}">{{ 'touch' | label }}</span></b-switch>
+        <b-switch class="setting" v-model="s.touch"><span class="settings16" aria-label="${loc('settings16')}">{{ 'touch' | label }}</span></b-switch>     
         <div>
             <div>${loc('key_mappings')}</div>
             <div class="keyMap"><span>${loc('multiplier',[10])}</span> <b-input v-model="s.keyMap.x10" id="x10Key"></b-input></div>
@@ -1358,6 +1358,26 @@ export function index(){
                 </div>
             </b-collapse>
         </div>
+        </p>
+        <div class="EasySettings">
+            <b-collapse :open="false">
+                <b-switch v-model="s.disableCustom" slot="trigger">{{ 'enable_custom' | label }}</b-switch>
+                <div>
+                    </p>
+                    <div class="content">
+                        <p>
+                            <b-switch class="setting" v-model="s.expose"><span class="settings8" aria-label="${loc('settings8')}">{{ 'expose' | label }}</span></b-switch>
+                            <b-switch class="setting" v-model="s.allowOvercap"><span class="setting_overcap" aria-label="${loc('setting_overcap')}">{{ 'touch' | label }}</span></b-switch>   
+                            <p> 
+                            <div class="setting"><span>TickRate</span> <b-input v-model="s.main_timer" id="mainTimer"></b-input></div>
+                            </p>
+                        </p>
+                    </div>
+                </div>
+            </b-collapse>   
+        </div>
+
+
     </b-tab-item>`);
 
     tabs.append(settings);

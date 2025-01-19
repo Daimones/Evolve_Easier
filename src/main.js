@@ -9029,7 +9029,8 @@ function midLoop(){
             }
             global.resource[res].max = caps[res];
             if (global.resource[res].amount > global.resource[res].max && res != 'Sus'){
-                global.resource[res].amount = global.resource[res].max;
+                //This overrides the resource mods and forces them back to max. Unsure if resources are added in non modres ways
+                //global.resource[res].amount = global.resource[res].max;
             }
             else if (global.resource[res].amount < 0){
                 global.resource[res].amount = 0;
